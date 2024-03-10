@@ -2,132 +2,18 @@
 
 /* eslint-env node */
 
-const Module = require('module');
-const path = require('path');
-
-const NodePlugin = require('./tools/node_modules/eslint-plugin-node-core');
-NodePlugin.RULES_DIR = path.resolve(__dirname, 'tools', 'eslint-rules');
-
-// The Module._findPath() monkeypatching is to make it so that ESLint will work
-// if invoked by a globally-installed ESLint or ESLint installed elsewhere
-// rather than the one we ship. This makes it possible for IDEs to lint files
-// with our rules while people edit them.
-const ModuleFindPath = Module._findPath;
-const hacks = [
-  'eslint-plugin-node-core',
-  'eslint-plugin-jsdoc',
-  'eslint-plugin-markdown',
-  '@babel/eslint-parser',
-  '@babel/plugin-syntax-import-attributes',
-];
-Module._findPath = (request, paths, isMain) => {
-  const r = ModuleFindPath(request, paths, isMain);
-  if (!r && hacks.includes(request)) {
-    try {
-      return require.resolve(`./tools/node_modules/${request}`);
-    } catch {
-      return require.resolve(
-        `./tools/node_modules/eslint/node_modules/${request}`);
-    }
-  }
-  return r;
-};
-
 module.exports = {
   root: true,
   env: {
     es2022: true,
   },
-  extends: ['eslint:recommended', 'plugin:jsdoc/recommended'],
-  plugins: ['jsdoc', 'markdown', 'node-core'],
+  extends: ['eslint:recommended'],
   parser: '@babel/eslint-parser',
   parserOptions: {
-    babelOptions: {
-      plugins: [
-        Module._findPath('@babel/plugin-syntax-import-attributes'),
-      ],
-    },
+    babelOptions: {},
     requireConfigFile: false,
     sourceType: 'script',
   },
-  overrides: [
-    {
-      files: [
-        '*.mjs',
-        'test/es-module/test-esm-example-loader.js',
-        'test/es-module/test-esm-type-flag.js',
-        'test/es-module/test-esm-type-flag-alias.js',
-      ],
-      parserOptions: { sourceType: 'module' },
-    },
-    {
-      files: ['**/*.md'],
-      processor: 'markdown/markdown',
-    },
-    {
-      files: ['**/*.md/*.cjs', '**/*.md/*.js'],
-      parserOptions: {
-        sourceType: 'script',
-        ecmaFeatures: { impliedStrict: true },
-      },
-      rules: { strict: 'off' },
-    },
-    {
-      files: [
-        '**/*.md/*.mjs',
-        'doc/api/esm.md/*.js',
-        'doc/api/packages.md/*.js',
-      ],
-      parserOptions: { sourceType: 'module' },
-      rules: { 'no-restricted-globals': [
-        'error',
-        {
-          name: '__filename',
-          message: 'Use import.meta.url instead',
-        },
-        {
-          name: '__dirname',
-          message: 'Not available in ESM',
-        },
-        {
-          name: 'exports',
-          message: 'Not available in ESM',
-        },
-        {
-          name: 'module',
-          message: 'Not available in ESM',
-        },
-        {
-          name: 'require',
-          message: 'Use import instead',
-        },
-        {
-          name: 'Buffer',
-          message: 'Import Buffer instead of using the global',
-        },
-        {
-          name: 'process',
-          message: 'Import process instead of using the global',
-        },
-      ] },
-    },
-    {
-      files: [
-        'lib/internal/modules/**/*.js',
-      ],
-      rules: {
-        'curly': 'error',
-      },
-    },
-    {
-      files: [
-        'lib/internal/test_runner/**/*.js',
-      ],
-      rules: {
-        'node-core/set-proto-to-null-in-object': 'error',
-      },
-    },
-  ],
   rules: {
     // ESLint built-in rules
     // https://eslint.org/docs/rules/
@@ -138,18 +24,22 @@ module.exports = {
     'block-scoped-var': 'error',
     'block-spacing': 'error',
     'brace-style': ['error', '1tbs', { allowSingleLine: true }],
-    'capitalized-comments': ['error', 'always', {
-      line: {
-        // Ignore all lines that have less characters than 20 and all lines that
-        // start with something that looks like a variable name or code.
-        ignorePattern: '.{0,20}$|[a-z]+ ?[0-9A-Z_.(/=:[#-]|std|http|ssh|ftp',
-        ignoreInlineComments: true,
-        ignoreConsecutiveComments: true,
+    'capitalized-comments': [
+      'error',
+      'always',
+      {
+        line: {
+          // Ignore all lines that have less characters than 20 and all lines that
+          // start with something that looks like a variable name or code.
+          ignorePattern: '.{0,20}$|[a-z]+ ?[0-9A-Z_.(/=:[#-]|std|http|ssh|ftp',
+          ignoreInlineComments: true,
+          ignoreConsecutiveComments: true,
+        },
+        block: {
+          ignorePattern: '.*',
+        },
       },
-      block: {
-        ignorePattern: '.*',
-      },
-    }],
+    ],
     'comma-dangle': ['error', 'always-multiline'],
     'comma-spacing': 'error',
     'comma-style': 'error',
@@ -162,26 +52,33 @@ module.exports = {
     'func-call-spacing': 'error',
     'func-name-matching': 'error',
     'func-style': ['error', 'declaration', { allowArrowFunctions: true }],
-    'indent': ['error', 2, {
-      ArrayExpression: 'first',
-      CallExpression: { arguments: 'first' },
-      FunctionDeclaration: { parameters: 'first' },
-      FunctionExpression: { parameters: 'first' },
-      MemberExpression: 'off',
-      ObjectExpression: 'first',
-      SwitchCase: 1,
-    }],
+    'indent': [
+      'error',
+      2,
+      {
+        ArrayExpression: 'first',
+        CallExpression: { arguments: 'first' },
+        FunctionDeclaration: { parameters: 'first' },
+        FunctionExpression: { parameters: 'first' },
+        MemberExpression: 'off',
+        ObjectExpression: 'first',
+        SwitchCase: 1,
+      },
+    ],
     'key-spacing': 'error',
     'keyword-spacing': 'error',
     'linebreak-style': 'error',
-    'max-len': ['error', {
-      code: 120,
-      ignorePattern: '^// Flags:',
-      ignoreRegExpLiterals: true,
-      ignoreTemplateLiterals: true,
-      ignoreUrls: true,
-      tabWidth: 2,
-    }],
+    'max-len': [
+      'error',
+      {
+        code: 120,
+        ignorePattern: '^// Flags:',
+        ignoreRegExpLiterals: true,
+        ignoreTemplateLiterals: true,
+        ignoreUrls: true,
+        tabWidth: 2,
+      },
+    ],
     'new-parens': 'error',
     'no-confusing-arrow': 'error',
     'no-constant-condition': ['error', { checkLoops: false }],
@@ -196,7 +93,7 @@ module.exports = {
     'no-new-require': 'error',
     'no-path-concat': 'error',
     'no-proto': 'error',
-    'no-redeclare': ['error', { 'builtinGlobals': false }],
+    'no-redeclare': ['error', { builtinGlobals: false }],
     'no-restricted-modules': ['error', 'sys'],
     'no-restricted-properties': [
       'error',
@@ -218,7 +115,8 @@ module.exports = {
       {
         object: 'assert',
         property: 'notEqual',
-        message: 'Use `assert.notStrictEqual()` rather than `assert.notEqual()`.',
+        message:
+          'Use `assert.notStrictEqual()` rather than `assert.notEqual()`.',
       },
       {
         property: '__defineGetter__',
@@ -234,11 +132,13 @@ module.exports = {
     'no-restricted-syntax': [
       'error',
       {
-        selector: "CallExpression[callee.name='setTimeout'][arguments.length<2]",
+        selector:
+          "CallExpression[callee.name='setTimeout'][arguments.length<2]",
         message: '`setTimeout()` must be invoked with at least two arguments.',
       },
       {
-        selector: "CallExpression[callee.name='setInterval'][arguments.length<2]",
+        selector:
+          "CallExpression[callee.name='setInterval'][arguments.length<2]",
         message: '`setInterval()` must be invoked with at least two arguments.',
       },
       {
@@ -265,11 +165,14 @@ module.exports = {
     'no-undef-init': 'error',
     'no-unused-expressions': ['error', { allowShortCircuit: true }],
     'no-unused-vars': ['error', { args: 'none', caughtErrors: 'all' }],
-    'no-use-before-define': ['error', {
-      classes: true,
-      functions: false,
-      variables: false,
-    }],
+    'no-use-before-define': [
+      'error',
+      {
+        classes: true,
+        functions: false,
+        variables: false,
+      },
+    ],
     'no-useless-call': 'error',
     'no-useless-concat': 'error',
     'no-useless-constructor': 'error',
@@ -281,7 +184,8 @@ module.exports = {
     'object-curly-spacing': ['error', 'always'],
     'one-var': ['error', { initialized: 'never' }],
     'one-var-declaration-per-line': 'error',
-    'operator-linebreak': ['error', 'after'],
+    // Conflicts with prettier
+    'operator-linebreak': 'off',
     'padding-line-between-statements': [
       'error',
       { blankLine: 'always', prev: 'function', next: 'function' },
@@ -294,18 +198,25 @@ module.exports = {
     'semi': 'error',
     'semi-spacing': 'error',
     'space-before-blocks': ['error', 'always'],
-    'space-before-function-paren': ['error', {
-      anonymous: 'never',
-      named: 'never',
-      asyncArrow: 'always',
-    }],
+    'space-before-function-paren': [
+      'error',
+      {
+        anonymous: 'never',
+        named: 'never',
+        asyncArrow: 'always',
+      },
+    ],
     'space-in-parens': 'error',
     'space-infix-ops': 'error',
     'space-unary-ops': 'error',
-    'spaced-comment': ['error', 'always', {
-      'block': { 'balanced': true },
-      'exceptions': ['-'],
-    }],
+    'spaced-comment': [
+      'error',
+      'always',
+      {
+        block: { balanced: true },
+        exceptions: ['-'],
+      },
+    ],
     'strict': ['error', 'global'],
     'symbol-description': 'error',
     'template-curly-spacing': 'error',
@@ -326,40 +237,6 @@ module.exports = {
     'jsdoc/require-param': 'off',
     'jsdoc/check-tag-names': 'off',
     'jsdoc/require-returns': 'off',
-
-    // Custom rules from eslint-plugin-node-core
-    'node-core/no-unescaped-regexp-dot': 'error',
-    'node-core/no-duplicate-requires': 'error',
-    'node-core/prefer-proto': 'error',
   },
-  globals: {
-    ByteLengthQueuingStrategy: 'readable',
-    CompressionStream: 'readable',
-    CountQueuingStrategy: 'readable',
-    CustomEvent: 'readable',
-    crypto: 'readable',
-    Crypto: 'readable',
-    CryptoKey: 'readable',
-    DecompressionStream: 'readable',
-    fetch: 'readable',
-    FormData: 'readable',
-    navigator: 'readable',
-    ReadableStream: 'readable',
-    ReadableStreamDefaultReader: 'readable',
-    ReadableStreamBYOBReader: 'readable',
-    ReadableStreamBYOBRequest: 'readable',
-    ReadableByteStreamController: 'readable',
-    ReadableStreamDefaultController: 'readable',
-    Response: 'readable',
-    TextDecoderStream: 'readable',
-    TextEncoderStream: 'readable',
-    TransformStream: 'readable',
-    TransformStreamDefaultController: 'readable',
-    ShadowRealm: 'readable',
-    SubtleCrypto: 'readable',
-    WritableStream: 'readable',
-    WritableStreamDefaultWriter: 'readable',
-    WritableStreamDefaultController: 'readable',
-    WebSocket: 'readable',
-  },
+  globals: {},
 };
