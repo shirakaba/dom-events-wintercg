@@ -1,5 +1,3 @@
-'use strict';
-
 /* eslint-env node */
 
 module.exports = {
@@ -12,7 +10,7 @@ module.exports = {
   parserOptions: {
     babelOptions: {},
     requireConfigFile: false,
-    sourceType: 'script',
+    sourceType: 'module',
   },
   rules: {
     // ESLint built-in rules
@@ -80,7 +78,7 @@ module.exports = {
       },
     ],
     'new-parens': 'error',
-    'no-confusing-arrow': 'error',
+    'no-confusing-arrow': 'off',
     'no-constant-condition': ['error', { checkLoops: false }],
     'no-constructor-return': 'error',
     'no-duplicate-imports': 'error',
@@ -201,7 +199,7 @@ module.exports = {
     'space-before-function-paren': [
       'error',
       {
-        anonymous: 'never',
+        anonymous: 'always',
         named: 'never',
         asyncArrow: 'always',
       },
@@ -238,5 +236,8 @@ module.exports = {
     'jsdoc/check-tag-names': 'off',
     'jsdoc/require-returns': 'off',
   },
-  globals: {},
+  globals: {
+    console: 'readable',
+    queueMicrotask: 'readable',
+  },
 };

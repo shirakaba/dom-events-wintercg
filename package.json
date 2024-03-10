@@ -2,6 +2,7 @@
   "name": "dom-events-wintercg",
   "version": "21.0.0",
   "type": "module",
+  "main": "src/index.js",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --max-warnings=0 ."

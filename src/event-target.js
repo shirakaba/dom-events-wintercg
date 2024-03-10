@@ -1,6 +1,11 @@
-'use strict';
-
-const {
+import { codes } from './errors.js';
+import {
+  defaultMaxListeners,
+  kMaxEventTargetListeners,
+  kMaxEventTargetListenersWarned,
+  setMaxListeners,
+} from './events.js';
+import {
   ArrayFrom,
   ArrayPrototypeReduce,
   Boolean,
@@ -21,59 +26,47 @@ const {
   Symbol,
   SymbolFor,
   SymbolToStringTag,
-} = primordials;
-
-const {
-  codes: {
-    ERR_INVALID_ARG_TYPE,
-    ERR_EVENT_RECURSION,
-    ERR_MISSING_ARGS,
-    ERR_INVALID_THIS,
-  },
-} = require('internal/errors');
-const {
-  validateAbortSignal,
-  validateObject,
-  validateString,
-  validateInternalField,
-  kValidateObjectAllowArray,
-  kValidateObjectAllowFunction,
-} = require('internal/validators');
-
-const {
+} from './primordials.js';
+import {
   customInspectSymbol,
+  inspect,
   kEmptyObject,
   kEnumerableProperty,
-} = require('internal/util');
-const { inspect } = require('util');
-const webidl = require('internal/webidl');
+} from './util.js';
+import {
+  kValidateObjectAllowArray,
+  kValidateObjectAllowFunction,
+  validateAbortSignal,
+  validateInternalField,
+  validateObject,
+  validateString,
+} from './validators.js';
+import * as webidl from './webidl.js';
+import * as process from './process.js';
 
-const kIsEventTarget = SymbolFor('nodejs.event_target');
+export const kIsEventTarget = SymbolFor('nodejs.event_target');
 const kIsNodeEventTarget = Symbol('kIsNodeEventTarget');
 
-const EventEmitter = require('events');
-const { kMaxEventTargetListeners, kMaxEventTargetListenersWarned } =
-  EventEmitter;
-
-const kEvents = Symbol('kEvents');
+export const kEvents = Symbol('kEvents');
 const kIsBeingDispatched = Symbol('kIsBeingDispatched');
 const kStop = Symbol('kStop');
 const kTarget = Symbol('kTarget');
 const kHandlers = Symbol('kHandlers');
-const kWeakHandler = Symbol('kWeak');
-const kResistStopPropagation = Symbol('kResistStopPropagation');
+export const kWeakHandler = Symbol('kWeak');
+export const kResistStopPropagation = Symbol('kResistStopPropagation');
 
 const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
 const kRemoveWeakListenerHelper = Symbol(
   'nodejs.internal.removeWeakListenerHelper',
 );
-const kCreateEvent = Symbol('kCreateEvent');
-const kNewListener = Symbol('kNewListener');
-const kRemoveListener = Symbol('kRemoveListener');
+export const kCreateEvent = Symbol('kCreateEvent');
+export const kNewListener = Symbol('kNewListener');
+export const kRemoveListener = Symbol('kRemoveListener');
 const kIsNodeStyleListener = Symbol('kIsNodeStyleListener');
-const kTrustEvent = Symbol('kTrustEvent');
+export const kTrustEvent = Symbol('kTrustEvent');
 
-const { now } = require('internal/perf/utils');
+const now =
+  globalThis.performance?.now?.bind(globalThis.performance) ?? Date.now;
 
 const kType = Symbol('type');
 const kDetail = Symbol('detail');
@@ -99,7 +92,7 @@ function isEvent(value) {
   return typeof value?.[kType] === 'string';
 }
 
-class Event {
+export class Event {
   #cancelable = false;
   #bubbles = false;
   #composed = false;
@@ -116,7 +109,7 @@ class Event {
    * }} [options]
    */
   constructor(type, options = kEmptyObject) {
-    if (arguments.length === 0) throw new ERR_MISSING_ARGS('type');
+    if (arguments.length === 0) throw new codes.ERR_MISSING_ARGS('type');
     validateObject(options, 'options');
     const { bubbles, cancelable, composed } = options;
     this.#cancelable = !!cancelable;
@@ -138,7 +131,7 @@ class Event {
    * @param {boolean} [cancelable]
    */
   initEvent(type, bubbles = false, cancelable = false) {
-    if (arguments.length === 0) throw new ERR_MISSING_ARGS('type');
+    if (arguments.length === 0) throw new codes.ERR_MISSING_ARGS('type');
 
     if (this[kIsBeingDispatched]) {
       return;
@@ -149,7 +142,7 @@ class Event {
   }
 
   [customInspectSymbol](depth, options) {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     const name = this.constructor.name;
     if (depth < 0) return name;
 
@@ -169,12 +162,12 @@ class Event {
   }
 
   stopImmediatePropagation() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     this[kStop] = true;
   }
 
   preventDefault() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     this.#defaultPrevented = true;
   }
 
@@ -182,7 +175,7 @@ class Event {
    * @type {EventTarget}
    */
   get target() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this[kTarget];
   }
 
@@ -190,7 +183,7 @@ class Event {
    * @type {EventTarget}
    */
   get currentTarget() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this[kTarget];
   }
 
@@ -198,7 +191,7 @@ class Event {
    * @type {EventTarget}
    */
   get srcElement() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this[kTarget];
   }
 
@@ -206,7 +199,7 @@ class Event {
    * @type {string}
    */
   get type() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this[kType];
   }
 
@@ -214,7 +207,7 @@ class Event {
    * @type {boolean}
    */
   get cancelable() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this.#cancelable;
   }
 
@@ -222,7 +215,7 @@ class Event {
    * @type {boolean}
    */
   get defaultPrevented() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this.#cancelable && this.#defaultPrevented;
   }
 
@@ -230,7 +223,7 @@ class Event {
    * @type {number}
    */
   get timeStamp() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this.#timestamp;
   }
 
@@ -241,7 +234,7 @@ class Event {
    * @returns {EventTarget[]}
    */
   composedPath() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this[kIsBeingDispatched] ? [this[kTarget]] : [];
   }
 
@@ -249,7 +242,7 @@ class Event {
    * @type {boolean}
    */
   get returnValue() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return !this.#cancelable || !this.#defaultPrevented;
   }
 
@@ -257,7 +250,7 @@ class Event {
    * @type {boolean}
    */
   get bubbles() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this.#bubbles;
   }
 
@@ -265,7 +258,7 @@ class Event {
    * @type {boolean}
    */
   get composed() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this.#composed;
   }
 
@@ -273,7 +266,7 @@ class Event {
    * @type {number}
    */
   get eventPhase() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this[kIsBeingDispatched] ? Event.AT_TARGET : Event.NONE;
   }
 
@@ -281,7 +274,7 @@ class Event {
    * @type {boolean}
    */
   get cancelBubble() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     return this.#propagationStopped;
   }
 
@@ -289,14 +282,14 @@ class Event {
    * @type {boolean}
    */
   set cancelBubble(value) {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     if (value) {
       this.#propagationStopped = true;
     }
   }
 
   stopPropagation() {
-    if (!isEvent(this)) throw new ERR_INVALID_THIS('Event');
+    if (!isEvent(this)) throw new codes.ERR_INVALID_THIS('Event');
     this.#propagationStopped = true;
   }
 }
@@ -357,7 +350,7 @@ function isCustomEvent(value) {
   return isEvent(value) && value?.[kDetail] !== undefined;
 }
 
-class CustomEvent extends Event {
+export class CustomEvent extends Event {
   /**
    * @constructor
    * @param {string} type
@@ -369,7 +362,7 @@ class CustomEvent extends Event {
    * }} [options]
    */
   constructor(type, options = kEmptyObject) {
-    if (arguments.length === 0) throw new ERR_MISSING_ARGS('type');
+    if (arguments.length === 0) throw new codes.ERR_MISSING_ARGS('type');
     super(type, options);
     this[kDetail] = options?.detail ?? null;
   }
@@ -378,7 +371,7 @@ class CustomEvent extends Event {
    * @type {any}
    */
   get detail() {
-    if (!isCustomEvent(this)) throw new ERR_INVALID_THIS('CustomEvent');
+    if (!isCustomEvent(this)) throw new codes.ERR_INVALID_THIS('CustomEvent');
     return this[kDetail];
   }
 }
@@ -529,14 +522,14 @@ class Listener {
   }
 }
 
-function initEventTarget(self) {
+export function initEventTarget(self) {
   self[kEvents] = new SafeMap();
-  self[kMaxEventTargetListeners] = EventEmitter.defaultMaxListeners;
+  self[kMaxEventTargetListeners] = defaultMaxListeners;
   self[kMaxEventTargetListenersWarned] = false;
   self[kHandlers] = new SafeMap();
 }
 
-class EventTarget {
+export class EventTarget {
   // Used in checking whether an object is an EventTarget. This is a well-known
   // symbol as EventTarget may be used cross-realm.
   // Ref: https://github.com/nodejs/node/pull/33661
@@ -590,8 +583,9 @@ class EventTarget {
    * }} [options]
    */
   addEventListener(type, listener, options = kEmptyObject) {
-    if (!isEventTarget(this)) throw new ERR_INVALID_THIS('EventTarget');
-    if (arguments.length < 2) throw new ERR_MISSING_ARGS('type', 'listener');
+    if (!isEventTarget(this)) throw new codes.ERR_INVALID_THIS('EventTarget');
+    if (arguments.length < 2)
+      throw new codes.ERR_MISSING_ARGS('type', 'listener');
 
     // We validateOptions before the validateListener check because the spec
     // requires us to hit getters.
@@ -612,7 +606,7 @@ class EventTarget {
       // No error code for this since it is a Warning
       // eslint-disable-next-line no-restricted-syntax
       const w = new Error(
-        `addEventListener called with ${listener}` + ' which has no effect.',
+        `addEventListener called with ${listener} which has no effect.`,
       );
       w.name = 'AddEventListenerArgumentTypeWarning';
       w.target = this;
@@ -715,8 +709,9 @@ class EventTarget {
    * }} [options]
    */
   removeEventListener(type, listener, options = kEmptyObject) {
-    if (!isEventTarget(this)) throw new ERR_INVALID_THIS('EventTarget');
-    if (arguments.length < 2) throw new ERR_MISSING_ARGS('type', 'listener');
+    if (!isEventTarget(this)) throw new codes.ERR_INVALID_THIS('EventTarget');
+    if (arguments.length < 2)
+      throw new codes.ERR_MISSING_ARGS('type', 'listener');
     if (!validateEventListener(listener)) return;
 
     type = webidl.converters.DOMString(type);
@@ -762,13 +757,14 @@ class EventTarget {
    * @param {Event} event
    */
   dispatchEvent(event) {
-    if (!isEventTarget(this)) throw new ERR_INVALID_THIS('EventTarget');
-    if (arguments.length < 1) throw new ERR_MISSING_ARGS('event');
+    if (!isEventTarget(this)) throw new codes.ERR_INVALID_THIS('EventTarget');
+    if (arguments.length < 1) throw new codes.ERR_MISSING_ARGS('event');
 
     if (!(event instanceof Event))
-      throw new ERR_INVALID_ARG_TYPE('event', 'Event', event);
+      throw new codes.ERR_INVALID_ARG_TYPE('event', 'Event', event);
 
-    if (event[kIsBeingDispatched]) throw new ERR_EVENT_RECURSION(event.type);
+    if (event[kIsBeingDispatched])
+      throw new codes.ERR_EVENT_RECURSION(event.type);
 
     this[kHybridDispatch](event, event.type, event);
 
@@ -860,7 +856,7 @@ class EventTarget {
     return new NodeCustomEvent(type, { detail: nodeValue });
   }
   [customInspectSymbol](depth, options) {
-    if (!isEventTarget(this)) throw new ERR_INVALID_THIS('EventTarget');
+    if (!isEventTarget(this)) throw new codes.ERR_INVALID_THIS('EventTarget');
     const name = this.constructor.name;
     if (depth < 0) return name;
 
@@ -885,11 +881,11 @@ ObjectDefineProperties(EventTarget.prototype, {
   },
 });
 
-function initNodeEventTarget(self) {
+export function initNodeEventTarget(self) {
   initEventTarget(self);
 }
 
-class NodeEventTarget extends EventTarget {
+export class NodeEventTarget extends EventTarget {
   static [kIsNodeEventTarget] = true;
   static defaultMaxListeners = 10;
 
@@ -902,15 +898,17 @@ class NodeEventTarget extends EventTarget {
    * @param {number} n
    */
   setMaxListeners(n) {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
-    EventEmitter.setMaxListeners(n, this);
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
+    setMaxListeners(n, this);
   }
 
   /**
    * @returns {number}
    */
   getMaxListeners() {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     return this[kMaxEventTargetListeners];
   }
 
@@ -918,7 +916,8 @@ class NodeEventTarget extends EventTarget {
    * @returns {string[]}
    */
   eventNames() {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     return ArrayFrom(this[kEvents].keys());
   }
 
@@ -927,7 +926,8 @@ class NodeEventTarget extends EventTarget {
    * @returns {number}
    */
   listenerCount(type) {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     const root = this[kEvents].get(String(type));
     return root !== undefined ? root.size : 0;
   }
@@ -941,7 +941,8 @@ class NodeEventTarget extends EventTarget {
    * @returns {NodeEventTarget}
    */
   off(type, listener, options) {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     this.removeEventListener(type, listener, options);
     return this;
   }
@@ -955,7 +956,8 @@ class NodeEventTarget extends EventTarget {
    * @returns {NodeEventTarget}
    */
   removeListener(type, listener, options) {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     this.removeEventListener(type, listener, options);
     return this;
   }
@@ -966,7 +968,8 @@ class NodeEventTarget extends EventTarget {
    * @returns {NodeEventTarget}
    */
   on(type, listener) {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     this.addEventListener(type, listener, { [kIsNodeStyleListener]: true });
     return this;
   }
@@ -977,7 +980,8 @@ class NodeEventTarget extends EventTarget {
    * @returns {NodeEventTarget}
    */
   addListener(type, listener) {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     this.addEventListener(type, listener, { [kIsNodeStyleListener]: true });
     return this;
   }
@@ -988,7 +992,8 @@ class NodeEventTarget extends EventTarget {
    * @returns {boolean}
    */
   emit(type, arg) {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     validateString(type, 'type');
     const hadListeners = this.listenerCount(type) > 0;
     this[kHybridDispatch](arg, type);
@@ -1001,7 +1006,8 @@ class NodeEventTarget extends EventTarget {
    * @returns {NodeEventTarget}
    */
   once(type, listener) {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     this.addEventListener(type, listener, {
       once: true,
       [kIsNodeStyleListener]: true,
@@ -1014,7 +1020,8 @@ class NodeEventTarget extends EventTarget {
    * @returns {NodeEventTarget}
    */
   removeAllListeners(type) {
-    if (!isNodeEventTarget(this)) throw new ERR_INVALID_THIS('NodeEventTarget');
+    if (!isNodeEventTarget(this))
+      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
     if (type !== undefined) {
       this[kEvents].delete(String(type));
     } else {
@@ -1056,7 +1063,7 @@ function validateEventListener(listener) {
     return true;
   }
 
-  throw new ERR_INVALID_ARG_TYPE('listener', 'EventListener', listener);
+  throw new codes.ERR_INVALID_ARG_TYPE('listener', 'EventListener', listener);
 }
 
 function validateEventListenerOptions(options) {
@@ -1084,7 +1091,7 @@ function validateEventListenerOptions(options) {
 // > isEventTarget({ constructor: EventTarget })
 // It stands in its current implementation as a compromise.
 // Ref: https://github.com/nodejs/node/pull/33661
-function isEventTarget(obj) {
+export function isEventTarget(obj) {
   return obj?.constructor?.[kIsEventTarget];
 }
 
@@ -1122,7 +1129,7 @@ function makeEventHandler(handler) {
   return eventHandler;
 }
 
-function defineEventHandler(emitter, name, event = name) {
+export function defineEventHandler(emitter, name, event = name) {
   // 8.1.5.1 Event handlers - basically `on[eventName]` attributes
   const propName = `on${name}`;
   function get() {
@@ -1168,21 +1175,3 @@ function defineEventHandler(emitter, name, event = name) {
     enumerable: true,
   });
 }
-
-module.exports = {
-  Event,
-  CustomEvent,
-  EventTarget,
-  NodeEventTarget,
-  defineEventHandler,
-  initEventTarget,
-  initNodeEventTarget,
-  kCreateEvent,
-  kNewListener,
-  kTrustEvent,
-  kRemoveListener,
-  kEvents,
-  kWeakHandler,
-  kResistStopPropagation,
-  isEventTarget,
-};
