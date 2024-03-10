@@ -1,8 +1,32 @@
 {
   "name": "dom-events-wintercg",
   "version": "21.0.0",
+  "description": "An polyfill for DOM Events and related APIs, extracted from Node.js, for use in WinterCG runtimes",
+  "author": "Jamie Birch",
+  "license": "MIT",
   "type": "module",
   "main": "src/index.js",
+  "files": [
+    "LICENCE-nodejs",
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/shirakaba/event-target-wintercg"
+  },
+  "bugs": {
+    "url": "https://github.com/shirakaba/event-target-wintercg/issues"
+  },
+  "keywords": [
+    "AbortController",
+    "AbortSignal",
+    "CustomEvent",
+    "DOMException",
+    "Event",
+    "EventTarget",
+    "polyfill",
+    "WinterCG"
+  ],
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --max-warnings=0 ."
