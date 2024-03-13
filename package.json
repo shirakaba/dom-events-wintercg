@@ -28,6 +28,7 @@
     "WinterCG"
   ],
   "scripts": {
+    "test": " node --expose-internals --no-warnings --expose-gc --test",
     "format": "prettier --write .",
     "lint": "eslint --max-warnings=0 ."
   },
