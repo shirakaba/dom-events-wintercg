@@ -3,10 +3,8 @@ import {
   defaultMaxListeners,
   kMaxEventTargetListeners,
   kMaxEventTargetListenersWarned,
-  setMaxListeners,
 } from './events.js';
 import {
-  ArrayFrom,
   ArrayPrototypeReduce,
   Boolean,
   Error,
@@ -22,7 +20,6 @@ import {
   SafeWeakMap,
   SafeWeakRef,
   SafeWeakSet,
-  String,
   Symbol,
   SymbolFor,
   SymbolToStringTag,
@@ -39,13 +36,11 @@ import {
   validateAbortSignal,
   validateInternalField,
   validateObject,
-  validateString,
 } from './validators.js';
 import * as webidl from './webidl.js';
 import * as process from './process.js';
 
 export const kIsEventTarget = SymbolFor('nodejs.event_target');
-const kIsNodeEventTarget = Symbol('kIsNodeEventTarget');
 
 export const kEvents = Symbol('kEvents');
 const kIsBeingDispatched = Symbol('kIsBeingDispatched');
@@ -881,171 +876,6 @@ ObjectDefineProperties(EventTarget.prototype, {
   },
 });
 
-export function initNodeEventTarget(self) {
-  initEventTarget(self);
-}
-
-export class NodeEventTarget extends EventTarget {
-  static [kIsNodeEventTarget] = true;
-  static defaultMaxListeners = 10;
-
-  constructor() {
-    super();
-    initNodeEventTarget(this);
-  }
-
-  /**
-   * @param {number} n
-   */
-  setMaxListeners(n) {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    setMaxListeners(n, this);
-  }
-
-  /**
-   * @returns {number}
-   */
-  getMaxListeners() {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    return this[kMaxEventTargetListeners];
-  }
-
-  /**
-   * @returns {string[]}
-   */
-  eventNames() {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    return ArrayFrom(this[kEvents].keys());
-  }
-
-  /**
-   * @param {string} type
-   * @returns {number}
-   */
-  listenerCount(type) {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    const root = this[kEvents].get(String(type));
-    return root !== undefined ? root.size : 0;
-  }
-
-  /**
-   * @param {string} type
-   * @param {EventTargetCallback|EventListener} listener
-   * @param {{
-   *   capture?: boolean,
-   * }} [options]
-   * @returns {NodeEventTarget}
-   */
-  off(type, listener, options) {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    this.removeEventListener(type, listener, options);
-    return this;
-  }
-
-  /**
-   * @param {string} type
-   * @param {EventTargetCallback|EventListener} listener
-   * @param {{
-   *   capture?: boolean,
-   * }} [options]
-   * @returns {NodeEventTarget}
-   */
-  removeListener(type, listener, options) {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    this.removeEventListener(type, listener, options);
-    return this;
-  }
-
-  /**
-   * @param {string} type
-   * @param {EventTargetCallback|EventListener} listener
-   * @returns {NodeEventTarget}
-   */
-  on(type, listener) {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    this.addEventListener(type, listener, { [kIsNodeStyleListener]: true });
-    return this;
-  }
-
-  /**
-   * @param {string} type
-   * @param {EventTargetCallback|EventListener} listener
-   * @returns {NodeEventTarget}
-   */
-  addListener(type, listener) {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    this.addEventListener(type, listener, { [kIsNodeStyleListener]: true });
-    return this;
-  }
-
-  /**
-   * @param {string} type
-   * @param {any} arg
-   * @returns {boolean}
-   */
-  emit(type, arg) {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    validateString(type, 'type');
-    const hadListeners = this.listenerCount(type) > 0;
-    this[kHybridDispatch](arg, type);
-    return hadListeners;
-  }
-
-  /**
-   * @param {string} type
-   * @param {EventTargetCallback|EventListener} listener
-   * @returns {NodeEventTarget}
-   */
-  once(type, listener) {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    this.addEventListener(type, listener, {
-      once: true,
-      [kIsNodeStyleListener]: true,
-    });
-    return this;
-  }
-
-  /**
-   * @param {string} [type]
-   * @returns {NodeEventTarget}
-   */
-  removeAllListeners(type) {
-    if (!isNodeEventTarget(this))
-      throw new codes.ERR_INVALID_THIS('NodeEventTarget');
-    if (type !== undefined) {
-      this[kEvents].delete(String(type));
-    } else {
-      this[kEvents].clear();
-    }
-
-    return this;
-  }
-}
-
-ObjectDefineProperties(NodeEventTarget.prototype, {
-  setMaxListeners: kEnumerableProperty,
-  getMaxListeners: kEnumerableProperty,
-  eventNames: kEnumerableProperty,
-  listenerCount: kEnumerableProperty,
-  off: kEnumerableProperty,
-  removeListener: kEnumerableProperty,
-  on: kEnumerableProperty,
-  addListener: kEnumerableProperty,
-  once: kEnumerableProperty,
-  emit: kEnumerableProperty,
-  removeAllListeners: kEnumerableProperty,
-});
-
 // EventTarget API
 
 function validateEventListener(listener) {
@@ -1093,10 +923,6 @@ function validateEventListenerOptions(options) {
 // Ref: https://github.com/nodejs/node/pull/33661
 export function isEventTarget(obj) {
   return obj?.constructor?.[kIsEventTarget];
-}
-
-function isNodeEventTarget(obj) {
-  return obj?.constructor?.[kIsNodeEventTarget];
 }
 
 function addCatch(promise) {

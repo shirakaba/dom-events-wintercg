@@ -6,7 +6,6 @@
   Don't try to replace with the original file and keep it up to date with the upstream file.
 */
 
-export const ArrayFrom = Array.from;
 export function ArrayPrototypeReduce(self, fn, initialValue) {
   return self.reduce(fn, initialValue);
 }

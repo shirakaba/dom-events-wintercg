@@ -129,19 +129,6 @@ export const validateObject = hideStackFrames(
   },
 );
 
-/**
- * @callback validateString
- * @param {*} value
- * @param {string} name
- * @returns {asserts value is string}
- */
-
-/** @type {validateString} */
-export const validateString = hideStackFrames((value, name) => {
-  if (typeof value !== 'string')
-    throw new codes.ERR_INVALID_ARG_TYPE(name, 'string', value);
-});
-
 export const validateInternalField = hideStackFrames(
   (object, fieldKey, className) => {
     if (
