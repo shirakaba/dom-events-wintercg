@@ -1,11 +1,4 @@
-export {
-  AbortController,
-  aborted,
-  AbortSignal,
-  ClonedAbortSignal,
-  transferableAbortController,
-  transferableAbortSignal,
-} from './abort-controller.js';
+export { AbortController, aborted, AbortSignal } from './abort-controller.js';
 export { DOMException } from './dom-exception.js';
 export {
   CustomEvent,
@@ -15,5 +8,4 @@ export {
   kWeakHandler,
 } from './event-target.js';
 export { setMaxListeners } from './events.js';
-export { MessageChannel } from './message-channel.js';
 export { polyfill } from './polyfill.js';

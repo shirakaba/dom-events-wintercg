@@ -49,23 +49,6 @@ const {
   ERR_METHOD_NOT_IMPLEMENTED,
 } = codes;
 
-import {
-  kDeserialize,
-  kTransfer,
-  kTransferList,
-  markTransferMode,
-} from './js-transferable.js';
-import { MessageChannel as NoOpMessageChannel } from './message-channel.js';
-
-function lazyMessageChannel() {
-  const MessageChannel = globalThis.MessageChannel ?? NoOpMessageChannel;
-  return new MessageChannel();
-}
-
-function lazyMarkTransferMode(obj, cloneable, transferable) {
-  markTransferMode(obj, cloneable, transferable);
-}
-
 const clearTimeoutRegistry = new SafeFinalizationRegistry(
   globalThis.clearTimeout,
 );
@@ -73,9 +56,7 @@ const gcPersistentSignals = new SafeSet();
 
 const kAborted = Symbol('kAborted');
 const kReason = Symbol('kReason');
-const kCloneData = Symbol('kCloneData');
 const kTimeout = Symbol('kTimeout');
-const kMakeTransferable = Symbol('kMakeTransferable');
 const kComposite = Symbol('kComposite');
 const kSourceSignals = Symbol('kSourceSignals');
 const kDependantSignals = Symbol('kDependantSignals');
@@ -259,72 +240,7 @@ export class AbortSignal extends EventTarget {
       gcPersistentSignals.delete(this);
     }
   }
-
-  [kTransfer]() {
-    validateThisAbortSignal(this);
-    const aborted = this.aborted;
-    if (aborted) {
-      const reason = this.reason;
-      return {
-        data: { aborted, reason },
-        deserializeInfo: 'internal/abort_controller:ClonedAbortSignal',
-      };
-    }
-
-    const { port1, port2 } = this[kCloneData];
-    this[kCloneData] = undefined;
-
-    this.addEventListener(
-      'abort',
-      () => {
-        port1.postMessage(this.reason);
-        port1.close();
-      },
-      { once: true },
-    );
-
-    return {
-      data: { port: port2 },
-      deserializeInfo: 'internal/abort_controller:ClonedAbortSignal',
-    };
-  }
-
-  [kTransferList]() {
-    if (!this.aborted) {
-      const { port1, port2 } = lazyMessageChannel();
-      port1.unref();
-      port2.unref();
-      this[kCloneData] = {
-        port1,
-        port2,
-      };
-      return [port2];
-    }
-    return [];
-  }
-
-  [kDeserialize]({ aborted, reason, port }) {
-    if (aborted) {
-      this[kAborted] = aborted;
-      this[kReason] = reason;
-      return;
-    }
-
-    port.onmessage = ({ data }) => {
-      abortSignal(this, data);
-      port.close();
-      port.onmessage = undefined;
-    };
-    // The receiving port, by itself, should never keep the event loop open.
-    // The unref() has to be called *after* setting the onmessage handler.
-    port.unref();
-  }
 }
-
-export function ClonedAbortSignal() {
-  return createAbortSignal({ transferable: true });
-}
-ClonedAbortSignal.prototype[kDeserialize] = () => {};
 
 ObjectDefineProperties(AbortSignal.prototype, {
   aborted: kEnumerableProperty,
@@ -344,26 +260,17 @@ defineEventHandler(AbortSignal.prototype, 'abort');
  * @param {{
  *   aborted? : boolean,
  *   reason? : any,
- *   transferable? : boolean,
  *   composite? : boolean,
  * }} [init]
  * @returns {AbortSignal}
  */
 function createAbortSignal(init = kEmptyObject) {
-  const {
-    aborted = false,
-    reason = undefined,
-    transferable = false,
-    composite = false,
-  } = init;
+  const { aborted = false, reason = undefined, composite = false } = init;
   const signal = new EventTarget();
   ObjectSetPrototypeOf(signal, AbortSignal.prototype);
   signal[kAborted] = aborted;
   signal[kReason] = reason;
   signal[kComposite] = composite;
-  if (transferable) {
-    lazyMarkTransferMode(signal, false, true);
-  }
   return signal;
 }
 
@@ -409,31 +316,6 @@ export class AbortController {
       options,
     );
   }
-
-  static [kMakeTransferable]() {
-    const controller = new AbortController();
-    controller.#signal = createAbortSignal({ transferable: true });
-    return controller;
-  }
-}
-
-/**
- * Enables the AbortSignal to be transferable using structuredClone/postMessage.
- * @param {AbortSignal} signal
- * @returns {AbortSignal}
- */
-export function transferableAbortSignal(signal) {
-  if (signal?.[kAborted] === undefined)
-    throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
-  lazyMarkTransferMode(signal, false, true);
-  return signal;
-}
-
-/**
- * Creates an AbortController with a transferable AbortSignal
- */
-export function transferableAbortController() {
-  return AbortController[kMakeTransferable]();
 }
 
 /**
