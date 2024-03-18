@@ -1,9 +1,7 @@
-'use strict';
-
 // Modeled very closely on the AbortController implementation
 // in https://github.com/mysticatea/abort-controller (MIT license)
 
-const {
+import {
   ObjectAssign,
   ObjectDefineProperties,
   ObjectSetPrototypeOf,
@@ -14,9 +12,9 @@ const {
   Symbol,
   SymbolToStringTag,
   WeakRef,
-} = primordials;
+} from './primordials.js';
 
-const {
+import {
   defineEventHandler,
   EventTarget,
   Event,
@@ -25,57 +23,52 @@ const {
   kRemoveListener,
   kResistStopPropagation,
   kWeakHandler,
-} = require('internal/event_target');
-const {
+} from './event-target.js';
+import {
   createDeferredPromise,
   customInspectSymbol,
   kEmptyObject,
   kEnumerableProperty,
-} = require('internal/util');
-const { inspect } = require('internal/util/inspect');
-const {
-  codes: { ERR_ILLEGAL_CONSTRUCTOR, ERR_INVALID_ARG_TYPE, ERR_INVALID_THIS },
-} = require('internal/errors');
-
-const {
+  inspect,
+} from './util.js';
+import { assert, codes } from './errors.js';
+import {
   validateAbortSignal,
   validateAbortSignalArray,
   validateObject,
   validateUint32,
   kValidateObjectAllowArray,
   kValidateObjectAllowFunction,
-} = require('internal/validators');
-
-const { DOMException } = internalBinding('messaging');
-
-const { clearTimeout, setTimeout } = require('timers');
-const assert = require('internal/assert');
+} from './validators.js';
+import { DOMException } from './dom-exception.js';
 
 const {
+  ERR_ILLEGAL_CONSTRUCTOR,
+  ERR_INVALID_ARG_TYPE,
+  ERR_INVALID_THIS,
+  ERR_METHOD_NOT_IMPLEMENTED,
+} = codes;
+
+import {
   kDeserialize,
   kTransfer,
   kTransferList,
-} = require('internal/worker/js_transferable');
-
-let _MessageChannel;
-let markTransferMode;
-
-// Loading the MessageChannel and markTransferable have to be done lazily
-// because otherwise we'll end up with a require cycle that ends up with
-// an incomplete initialization of abort_controller.
+  markTransferMode,
+} from './js-transferable.js';
+import { MessageChannel as NoOpMessageChannel } from './message-channel.js';
 
 function lazyMessageChannel() {
-  _MessageChannel ??= require('internal/worker/io').MessageChannel;
-  return new _MessageChannel();
+  const MessageChannel = globalThis.MessageChannel ?? NoOpMessageChannel;
+  return new MessageChannel();
 }
 
 function lazyMarkTransferMode(obj, cloneable, transferable) {
-  markTransferMode ??=
-    require('internal/worker/js_transferable').markTransferMode;
   markTransferMode(obj, cloneable, transferable);
 }
 
-const clearTimeoutRegistry = new SafeFinalizationRegistry(clearTimeout);
+const clearTimeoutRegistry = new SafeFinalizationRegistry(
+  globalThis.clearTimeout,
+);
 const gcPersistentSignals = new SafeSet();
 
 const kAborted = Symbol('kAborted');
@@ -110,7 +103,7 @@ function validateThisAbortSignal(obj) {
 // the created timer object. Separately, we add the signal to a
 // FinalizerRegistry that will clear the timeout when the signal is gc'd.
 function setWeakAbortSignalTimeout(weakRef, delay) {
-  const timeout = setTimeout(() => {
+  const timeout = globalThis.setTimeout(() => {
     const signal = weakRef.deref();
     if (signal !== undefined) {
       gcPersistentSignals.delete(signal);
@@ -127,7 +120,7 @@ function setWeakAbortSignalTimeout(weakRef, delay) {
   return timeout;
 }
 
-class AbortSignal extends EventTarget {
+export class AbortSignal extends EventTarget {
   constructor() {
     throw new ERR_ILLEGAL_CONSTRUCTOR();
   }
@@ -181,6 +174,10 @@ class AbortSignal extends EventTarget {
    * @returns {AbortSignal}
    */
   static timeout(delay) {
+    if (!globalThis.setTimeout || !globalThis.clearTimeout) {
+      throw new ERR_METHOD_NOT_IMPLEMENTED('timeout()');
+    }
+
     validateUint32(delay, 'delay', false);
     const signal = createAbortSignal();
     signal[kTimeout] = true;
@@ -324,7 +321,7 @@ class AbortSignal extends EventTarget {
   }
 }
 
-function ClonedAbortSignal() {
+export function ClonedAbortSignal() {
   return createAbortSignal({ transferable: true });
 }
 ClonedAbortSignal.prototype[kDeserialize] = () => {};
@@ -384,7 +381,7 @@ function abortSignal(signal, reason) {
   });
 }
 
-class AbortController {
+export class AbortController {
   #signal;
 
   /**
@@ -425,7 +422,7 @@ class AbortController {
  * @param {AbortSignal} signal
  * @returns {AbortSignal}
  */
-function transferableAbortSignal(signal) {
+export function transferableAbortSignal(signal) {
   if (signal?.[kAborted] === undefined)
     throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
   lazyMarkTransferMode(signal, false, true);
@@ -435,7 +432,7 @@ function transferableAbortSignal(signal) {
 /**
  * Creates an AbortController with a transferable AbortSignal
  */
-function transferableAbortController() {
+export function transferableAbortController() {
   return AbortController[kMakeTransferable]();
 }
 
@@ -444,7 +441,7 @@ function transferableAbortController() {
  * @param {any} resource
  * @returns {Promise<void>}
  */
-async function aborted(signal, resource) {
+export async function aborted(signal, resource) {
   if (signal === undefined) {
     throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
   }
@@ -478,12 +475,3 @@ ObjectDefineProperty(AbortController.prototype, SymbolToStringTag, {
   configurable: true,
   value: 'AbortController',
 });
-
-module.exports = {
-  AbortController,
-  AbortSignal,
-  ClonedAbortSignal,
-  aborted,
-  transferableAbortSignal,
-  transferableAbortController,
-};

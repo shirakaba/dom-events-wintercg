@@ -127,6 +127,8 @@ export function hideStackFrames(fn) {
   return fn;
 }
 
+E('ERR_ILLEGAL_CONSTRUCTOR', 'Illegal constructor', TypeError);
+
 E(
   'ERR_INVALID_ARG_TYPE',
   (name, expected, actual) => {
@@ -274,6 +276,8 @@ E(
 );
 
 E('ERR_INVALID_THIS', 'Value of "this" must be of type %s', TypeError);
+
+E('ERR_METHOD_NOT_IMPLEMENTED', 'The %s method is not implemented', Error);
 
 E(
   'ERR_MISSING_ARGS',

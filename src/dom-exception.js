@@ -1,6 +1,4 @@
-'use strict';
-
-const {
+import {
   ErrorCaptureStackTrace,
   ErrorPrototype,
   ObjectDefineProperties,
@@ -11,7 +9,7 @@ const {
   SafeSet,
   SymbolToStringTag,
   TypeError,
-} = primordials;
+} from './primordials.js';
 
 function throwInvalidThisError(Base, type) {
   const err = new Base();
@@ -48,7 +46,7 @@ const disusedNamesSet = new SafeSet()
   .add('NoDataAllowedError')
   .add('ValidationError');
 
-class DOMException {
+export class DOMException {
   constructor(message = '', options = 'Error') {
     ErrorCaptureStackTrace(this);
 
@@ -153,5 +151,3 @@ for (const { 0: name, 1: codeName, 2: value } of [
   ObjectDefineProperty(DOMException.prototype, codeName, desc);
   nameToCodeMap.set(name, value);
 }
-
-exports.DOMException = DOMException;

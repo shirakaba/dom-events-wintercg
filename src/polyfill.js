@@ -1,7 +1,12 @@
+import { AbortController, AbortSignal } from './abort-controller.js';
+import { DOMException } from './dom-exception.js';
 import { Event, CustomEvent, EventTarget } from './event-target.js';
 
 /**
  * A polyfill to set the following APIs on the global object:
+ * - AbortController
+ * - AbortSignal
+ * - DOMException
  * - CustomEvent
  * - Event
  * - EventTarget
@@ -18,6 +23,9 @@ import { Event, CustomEvent, EventTarget } from './event-target.js';
  */
 export function polyfill(globalObject = globalThis) {
   if (
+    'AbortController' in globalObject &&
+    'AbortSignal' in globalObject &&
+    'DOMException' in globalObject &&
     'CustomEvent' in globalObject &&
     'Event' in globalObject &&
     'EventTarget' in globalObject
@@ -32,6 +40,18 @@ export function polyfill(globalObject = globalThis) {
   };
 
   Object.defineProperties(globalObject, {
+    AbortController: {
+      ...descriptor,
+      value: AbortController,
+    },
+    AbortSignal: {
+      ...descriptor,
+      value: AbortSignal,
+    },
+    DOMException: {
+      ...descriptor,
+      value: DOMException,
+    },
     CustomEvent: {
       ...descriptor,
       value: CustomEvent,

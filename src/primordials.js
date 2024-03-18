@@ -14,6 +14,9 @@ export function ArrayIsArray(self) {
 }
 export const Boolean = globalThis.Boolean;
 export const Error = globalThis.Error;
+/** No-op, because this API is unique to V8 */
+export const ErrorCaptureStackTrace = () => {};
+export const ErrorPrototype = globalThis.Error.prototype;
 export function FunctionPrototypeCall(fn, thisArgs, ...args) {
   return fn.call(thisArgs, ...args);
 }
@@ -47,6 +50,11 @@ export function ObjectDefineProperty(self, name, prop) {
 export function ObjectGetOwnPropertyDescriptor(self, name) {
   return Object.getOwnPropertyDescriptor(self, name);
 }
+export function ObjectSetPrototypeOf(target, proto) {
+  return Object.setPrototypeOf(target, proto);
+}
+export const Promise = globalThis.Promise;
+export const PromiseResolve = globalThis.Promise.resolve;
 export const ReflectApply = globalThis.Reflect.apply;
 export const SafeFinalizationRegistry = globalThis.FinalizationRegistry;
 export const SafeMap = globalThis.Map;
@@ -59,3 +67,4 @@ export const Symbol = globalThis.Symbol;
 export const SymbolFor = Symbol.for;
 export const SymbolToStringTag = Symbol.toStringTag;
 export const TypeError = globalThis.TypeError;
+export const WeakRef = globalThis.WeakRef;

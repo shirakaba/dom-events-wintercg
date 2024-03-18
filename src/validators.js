@@ -1,14 +1,12 @@
 import { codes, hideStackFrames } from './errors.js';
 import {
   ArrayIsArray,
+  NumberIsInteger,
   NumberIsNaN,
   ObjectPrototypeHasOwnProperty,
 } from './primordials.js';
 
-const {
-  ERR_INVALID_ARG_TYPE: { HideStackFramesError: ERR_INVALID_ARG_TYPE },
-  ERR_INVALID_ARG_VALUE: { HideStackFramesError: ERR_INVALID_ARG_VALUE },
-} = codes;
+const { ERR_OUT_OF_RANGE, ERR_INVALID_ARG_TYPE, ERR_INVALID_ARG_VALUE } = codes;
 
 /**
  * @callback validateNumber
@@ -57,6 +55,26 @@ export const validateArray = hideStackFrames((value, name, minLength = 0) => {
     throw new ERR_INVALID_ARG_VALUE(name, value, reason);
   }
 });
+
+/**
+ * @callback validateAbortSignalArray
+ * @param {*} value
+ * @param {string} name
+ * @returns {asserts value is AbortSignal[]}
+ */
+
+/** @type {validateAbortSignalArray} */
+export function validateAbortSignalArray(value, name) {
+  validateArray(value, name);
+  for (let i = 0; i < value.length; i++) {
+    const signal = value[i];
+    const indexedName = `${name}[${i}]`;
+    if (signal == null) {
+      throw new ERR_INVALID_ARG_TYPE(indexedName, 'AbortSignal', signal);
+    }
+    validateAbortSignal(signal, indexedName);
+  }
+}
 
 /**
  * @callback validateAbortSignal
@@ -137,6 +155,32 @@ export const validateInternalField = hideStackFrames(
       !ObjectPrototypeHasOwnProperty(object, fieldKey)
     ) {
       throw new ERR_INVALID_ARG_TYPE('this', className, object);
+    }
+  },
+);
+
+/**
+ * @callback validateUint32
+ * @param {*} value
+ * @param {string} name
+ * @param {number|boolean} [positive=false]
+ * @returns {asserts value is number}
+ */
+
+/** @type {validateUint32} */
+export const validateUint32 = hideStackFrames(
+  (value, name, positive = false) => {
+    if (typeof value !== 'number') {
+      throw new ERR_INVALID_ARG_TYPE(name, 'number', value);
+    }
+    if (!NumberIsInteger(value)) {
+      throw new ERR_OUT_OF_RANGE(name, 'an integer', value);
+    }
+    const min = positive ? 1 : 0;
+    // 2 ** 32 === 4294967296
+    const max = 4_294_967_295;
+    if (value < min || value > max) {
+      throw new ERR_OUT_OF_RANGE(name, `>= ${min} && <= ${max}`, value);
     }
   },
 );

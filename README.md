@@ -2,9 +2,12 @@
 
 [![npm status](https://img.shields.io/npm/v/dom-events-wintercg.svg)](https://npm.im/dom-events-wintercg)
 
-A polyfill for the [DOM Events](https://dom.spec.whatwg.org/#introduction-to-dom-events) APIs:
+A polyfill for [DOM Events](https://dom.spec.whatwg.org/#introduction-to-dom-events) and related APIs:
 
+- [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
+- [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal)
 - [CustomEvent](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent)
+- [DOMException](https://developer.mozilla.org/en-US/docs/Web/API/DOMException)
 - [Event](https://developer.mozilla.org/en-US/docs/Web/API/Event)
 - [EventTarget](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget)
 
@@ -53,7 +56,7 @@ import { polyfill } from 'dom-events-wintercg';
 
 polyfill(globalThis);
 
-// Event, EventTarget, and CustomEvent will now be available in global scope
+// All implemented APIs will now be available in global scope
 
 const eventTarget = new EventTarget();
 const event = new Event('click', {});
@@ -141,13 +144,16 @@ Below, I'll describe for each bundler how to integrate this package into your bu
 
 #### Webpack 5
 
-This configuration ensures that `CustomEvent`, `Event`, and `EventTarget` are available from global scope:
+This configuration ensures that all the implemented APIs are available from global scope:
 
 ```js
 const webpackConfig = {
   plugins: [
     new webpack.ProvidePlugin({
+      AbortController: ['dom-events-wintercg', 'AbortController'],
+      AbortSignal: ['dom-events-wintercg', 'AbortSignal'],
       CustomEvent: ['dom-events-wintercg', 'CustomEvent'],
+      DOMException: ['dom-events-wintercg', 'DOMException'],
       Event: ['dom-events-wintercg', 'Event'],
       EventTarget: ['dom-events-wintercg', 'EventTarget'],
     }),
@@ -166,7 +172,10 @@ Additionally, you can polyfill _some of_ the Node.js [events](https://nodejs.org
 +   },
     plugins: [
       new webpack.ProvidePlugin({
+        AbortController: ['dom-events-wintercg', 'AbortController'],
+        AbortSignal: ['dom-events-wintercg', 'AbortSignal'],
         CustomEvent: ['dom-events-wintercg', 'CustomEvent'],
+        DOMException: ['dom-events-wintercg', 'DOMException'],
         Event: ['dom-events-wintercg', 'Event'],
         EventTarget: ['dom-events-wintercg', 'EventTarget'],
       }),
@@ -176,7 +185,11 @@ Additionally, you can polyfill _some of_ the Node.js [events](https://nodejs.org
 
 ## Prerequisities
 
-Your JS engine or runtime must support the following APIs (this is a non-exhaustive list):
+This polyfill relies on a few language features.
+
+### Required APIs
+
+Your JS engine/runtime must support the following APIs (this is a non-exhaustive list):
 
 - At least [ES6](https://www.w3schools.com/js/js_es6.asp). I'm not sure exactly what this repo makes use of, but technically the linter allows up to ES2022.
 - [Private properties](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/Private_properties)
@@ -186,6 +199,19 @@ Your JS engine or runtime must support the following APIs (this is a non-exhaust
 - [WeakSet](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet)
 - [WeakRef](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakRef)
 - Basic [ESM](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules) (`import` and `export`)
+
+### Optional APIs
+
+Some of the features of this polyfill are optional, and will fail gracefully if your JS engine/runtime lacks support for the underlying APIs.
+
+### `AbortSignal.timeout()`
+
+[AbortSignal.timeout()](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static) support requires the following APIs:
+
+- [setTimeout](https://developer.mozilla.org/en-US/docs/Web/API/setTimeout)
+- [clearTimeout](https://developer.mozilla.org/en-US/docs/Web/API/clearTimeout)
+
+If missing, `AbortSignal.timeout()` will throw an Error with code `ERR_METHOD_NOT_IMPLEMENTED` when called.
 
 ## Differences from browser EventTarget
 

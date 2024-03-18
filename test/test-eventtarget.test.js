@@ -1,6 +1,7 @@
 // https://github.com/nodejs/node/blob/78be0d0f1ccba3c7a29f7d46319d17939a0be13d/test/parallel/test-eventtarget.js#L424
 import { ok, deepStrictEqual, strictEqual, throws } from 'assert';
 import {
+  AbortController,
   defineEventHandler,
   Event,
   EventTarget,
@@ -780,8 +781,7 @@ test('et-58', () => {
   }, TypeError);
 });
 
-// Skipping as we haven't implemented AbortController based on this library yet.
-test.skip('et-59', () => {
+test('et-59', () => {
   // Test that event listeners are removed by signal even when
   // signal's abort event propagation stopped
   const controller = new AbortController();

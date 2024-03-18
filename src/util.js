@@ -1,4 +1,9 @@
-import { ObjectFreeze, SymbolFor, NumberIsNaN } from './primordials.js';
+import {
+  ObjectFreeze,
+  SymbolFor,
+  NumberIsNaN,
+  Promise,
+} from './primordials.js';
 
 export const customInspectSymbol = SymbolFor('nodejs.util.inspect.custom');
 export const kEnumerableProperty = { __proto__: null };
@@ -6,6 +11,17 @@ kEnumerableProperty.enumerable = true;
 ObjectFreeze(kEnumerableProperty);
 
 export const kEmptyObject = ObjectFreeze({ __proto__: null });
+
+export function createDeferredPromise() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
 
 export function format(format, ...args) {
   // Simplified version of https://nodejs.org/api/util.html#utilformatformat-args
