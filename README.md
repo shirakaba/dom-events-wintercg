@@ -17,33 +17,11 @@ To clarify, this project is not affiliated with [WinterCG](https://wintercg.org)
 
 ## Installation
 
-Install this npm package as follows, depending on which package manager you're using.
+Install this npm package as follows:
 
-- **npm:**
-
-  ```sh
-  npm install --save dom-events-wintercg
-  ```
-
-- **Yarn:**
-
-  ```sh
-  yarn add dom-events-wintercg
-  ```
-
-- **pnpm:**
-
-  ```sh
-  pnpm add dom-events-wintercg
-  ```
-
-- **Bun:**
-
-  ```sh
-  bun add dom-events-wintercg
-  ```
-
-- **Deno:** No need to install. Just add the [npm: specifier](https://docs.deno.com/runtime/manual/node/npm_specifiers) when importing.
+```sh
+npm install dom-events-wintercg
+```
 
 ## Usage
 
